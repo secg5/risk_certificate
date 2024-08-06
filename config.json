@@ -1,0 +1,13 @@
+{
+    "number_arms": 5,
+    "sample_size": 100,
+    "first_stage_size": 40,
+    "distribution": [
+        0.1,
+        0.5,
+        1,
+        0.75,
+        0.25
+    ],
+    "random_seed": 42
+}
