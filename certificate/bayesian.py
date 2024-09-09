@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import pickle
 
-from config import Config
-from run_simulations import sample_bernoulli
+from certificate.config import Config
+from certificate.run_simulations import sample_bernoulli
 
 DELTA = 0.1
 
