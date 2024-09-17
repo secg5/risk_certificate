@@ -231,7 +231,7 @@ def run_experiments(config_dict):
         # import pdb; pdb.set_trace()
         B = train_means_indices[:k]
         second_stage = sample_bernoulli(m, k, mu, B)
-        delta = np.sqrt(2*(k/m)*np.log(1/DELTA))
+        delta = np.sqrt(2*(k/m)*np.log(2/DELTA))
         certificate = second_stage.mean(axis=1) - delta
         
         return certificate, B, delta
@@ -240,7 +240,9 @@ def run_experiments(config_dict):
     # This is omnicient with respect with the data split
     certificate_omniscient, B_omniscient, delta_omniscient = second_stage(omniscient_k, m, mu, train_means_indices)
     certificate_dominant, B_dominant, delta_dominant = second_stage(dominant_k, m, mu, train_means_indices)
-    true_value = np.max(mu) - np.sqrt(2*(1/m)*np.log(1/DELTA))
+    true_value = np.max(mu) - np.sqrt(2*(1/m)*np.log(2/DELTA))
+    certificate_ucb = UCB(mu, K, N, delta=DELTA)
+    certificate_se = successive_elimination(mu, K, N, delta=DELTA)
     # print ("B", "splt", B_split, "Omnicient",B_omniscient,"Dominant", B_dominant)
 
     artifacts = {"sample_split": {"certificate":certificate_split, 
@@ -248,11 +250,7 @@ def run_experiments(config_dict):
                         "true_value": true_value}}
     artifacts["omniscient"] = {"certificate":certificate_omniscient, "delta": delta_omniscient,"true_value": true_value}
     artifacts["dominant"] = {"certificate":certificate_dominant, "delta": delta_dominant,"true_value": true_value}
-    
-    certificate_ucb = UCB(mu, K, N, delta=DELTA)
     artifacts["ucb"] = {'certificate': certificate_ucb, "true_value": true_value}
-    
-    certificate_se = successive_elimination(mu, K, N, delta=DELTA)
     artifacts["successive_elimination"] = {'certificate': certificate_se, "true_value": true_value}
 
     if config.run_all_k:
@@ -289,7 +287,7 @@ def run_experiments(config_dict):
                     means = np.array([np.random.beta(new_alphas[new_set[j]],new_betas[new_set[j]]) for j in range(len(new_set))])
                     sampled_values = sample_bernoulli((N-n)//len(new_set), len(new_set), means)
                     predicted_means = np.mean(sampled_values,axis=1)
-                    min_certificate.append(np.max(predicted_means)-np.sqrt(2*(1/((N-n)//len(new_set)))*np.log(1/DELTA)))
+                    min_certificate.append(np.max(predicted_means)-np.sqrt(2*(1/((N-n)//len(new_set)))*np.log(2/DELTA)))
                 min_certificate = np.mean(min_certificate)
 
                 if next_best_value[0] < min_certificate:

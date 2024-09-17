@@ -16,7 +16,7 @@
 # %autoreload 2
 
 import sys
-sys.path.append('/usr0/home/naveenr/projects/risk_certificate')
+sys.path.append('/Users/scortesg/Documents/risk_certificate')
 
 import matplotlib.pyplot as plt
 import pickle
@@ -103,6 +103,21 @@ if arm_distribution == 'bimodal_diff':
         else:
             diff = np.random.normal(arm_parameters['diff_mean_2'],arm_parameters['diff_std_2']) 
         arm_means.append(min(max(arm_means[-1]-diff,0.0001),1))
+if arm_distribution == "bimodal":
+    # Generate means for one-fourth of the arms (0.8 to 0.9)
+    num_high_means = n_arms // 20
+    high_means = [random.uniform(0.8, 0.9) for _ in range(num_high_means)]
+
+    # Generate means for three-fourths of the arms (0.1 to 1.5)
+    num_low_means = n_arms - num_high_means
+    low_means = [random.uniform(0.1, 0.15) for _ in range(num_low_means)]
+
+    # Combine the two lists to form arm_means
+    arm_means = high_means + low_means
+
+    # Shuffle the arm_means to mix the values
+    random.shuffle(arm_means)
+
 
 experiment_config = {
     'number_arms': n_arms, 
