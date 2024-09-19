@@ -32,14 +32,14 @@ is_jupyter = 'ipykernel' in sys.modules
 
 # +
 if is_jupyter: 
-    seed        = 44
+    seed        = 43
     trials = 100
     n_arms = 10
     max_pulls_per_arm = 50
-    first_stage_pulls_per_arm = 0
-    arm_distribution = 'unimodal_diff'
-    out_folder = "non_adaptive"
-    arm_parameters=  {'alpha': 2, 'beta': 2, 'diff_mean_1': 0.05, 'diff_std_1': 0.01,'diff_mean_2': 0.01, 'diff_std_2': 0.001}
+    first_stage_pulls_per_arm = 25
+    arm_distribution = 'beta'
+    out_folder = "prior"
+    arm_parameters=  {'alpha': 50, 'beta': 50, 'diff_mean_1': 0.05, 'diff_std_1': 0.01,'diff_mean_2': 0.01, 'diff_std_2': 0.001}
     delta = 0.1
     run_all_k = True
 else:
@@ -142,6 +142,9 @@ np.mean(aggregate_results['sample_split_total']['certificate'])
 
 np.mean(aggregate_results['sample_split']['certificate'])
 
+if 'prior' in aggregate_results:
+    print(np.mean(aggregate_results['prior']['certificate'])/np.mean(aggregate_results['sample_split_total']['certificate']))
+
 np.mean(aggregate_results['random']['certificate'])
 
 np.mean(aggregate_results['k_{}'.format(n_arms)]['delta'])
@@ -160,8 +163,4 @@ save_path = "{}/{}.json".format(out_folder,save_name)
 
 delete_duplicate_results(out_folder,"",aggregate_results)
 
-aggregate_results
-
 json.dump(aggregate_results,open('../../results/'+save_path,'w'))
-
-
