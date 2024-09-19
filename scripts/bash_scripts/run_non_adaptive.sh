@@ -16,6 +16,7 @@ do
         out_folder=non_adaptive
         delta=0.1
         max_pulls_per_arm=50
+        n_arms=10
 
         for first_stage_pulls_per_arm in 5 10 15 20 25 30 35 40 45 
         do 

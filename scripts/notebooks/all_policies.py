@@ -36,9 +36,9 @@ if is_jupyter:
     trials = 100
     n_arms = 10
     max_pulls_per_arm = 50
-    first_stage_pulls_per_arm = 5
+    first_stage_pulls_per_arm = 0
     arm_distribution = 'unimodal_diff'
-    out_folder = "baseline_comparison"
+    out_folder = "non_adaptive"
     arm_parameters=  {'alpha': 2, 'beta': 2, 'diff_mean_1': 0.05, 'diff_std_1': 0.01,'diff_mean_2': 0.01, 'diff_std_2': 0.001}
     delta = 0.1
     run_all_k = True
@@ -133,7 +133,7 @@ aggregate_results['parameters']['seed'] = seed
 for method in all_results[0]:
     aggregate_results[method] = {}
     aggregate_results[method]['certificate'] = [max(i[method]['certificate']) for i in all_results]
-    aggregate_results[method]['delta'] = [i[method]['delta'] for i in all_results]
+    aggregate_results[method]['delta'] = [i[method]['delta'].tolist() for i in all_results]
     aggregate_results[method]['true_value'] = all_results[0][method]['true_value']
 
 # -
@@ -159,6 +159,8 @@ np.mean(aggregate_results['k_{}'.format(n_arms)]['true_value'])-np.mean(aggregat
 save_path = "{}/{}.json".format(out_folder,save_name)
 
 delete_duplicate_results(out_folder,"",aggregate_results)
+
+aggregate_results
 
 json.dump(aggregate_results,open('../../results/'+save_path,'w'))
 

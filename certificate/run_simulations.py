@@ -242,7 +242,7 @@ def run_experiments(config_dict):
     # This is omnicient with respect with the data split
     certificate_omniscient, B_omniscient, delta_omniscient = second_stage(omniscient_k, m, mu, train_means_indices)
     certificate_dominant, B_dominant, delta_dominant = second_stage(dominant_k, m, mu, train_means_indices)
-    true_value = np.max(mu)
+    true_value = float(np.max(mu))
 
     certificate_ucb, delta_ucb = UCB(mu, K, N, delta=DELTA)
     certificate_se, delta_se = successive_elimination(mu, K, N, delta=DELTA)
