@@ -109,7 +109,10 @@ def delete_duplicate_results(folder_name,result_name,data):
     all_results = glob.glob("../../results/{}/{}*.json".format(folder_name,result_name))
 
     for file_name in all_results:
-        load_file = json.load(open(file_name,"r"))
+        try:
+            load_file = json.load(open(file_name,"r"))
+        except:
+            continue 
 
         if 'parameters' in load_file and load_file['parameters'] == data['parameters']:
             try:
@@ -270,7 +273,7 @@ def run_experiments(config_dict):
         artifacts["one_stage"]["delta"] = np.sqrt(2*1/((N//K))*np.log(2/DELTA))
         artifacts["one_stage"]["certificate"] += (artifacts["k_{}".format(K)]["delta"]-artifacts["one_stage"]["delta"])
 
-    if config.arm_distribution == 'beta':
+    if config.arm_distribution == 'beta' or config.arm_distribution == "beta_misspecified":
         new_alphas = []
         new_betas = []
 
