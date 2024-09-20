@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: risk_certificates
 #     language: python
@@ -15,9 +15,11 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
-sys.path.append('/Users/scortesg/Documents/risk_certificate')
-sys.path.append('/usr0/home/naveenr/projects/risk_certificate')
+# +
+# import sys
+# sys.path.append('/Users/scortesg/Documents/risk_certificate')
+# sys.path.append('/usr0/home/naveenr/projects/risk_certificate')
+# -
 
 import matplotlib.pyplot as plt
 import pickle
@@ -27,6 +29,8 @@ import argparse
 import secrets
 from certificate.run_simulations import run_experiments, delete_duplicate_results
 import json 
+import sys
+import os
 
 is_jupyter = 'ipykernel' in sys.modules
 
@@ -38,7 +42,7 @@ if is_jupyter:
     max_pulls_per_arm = 50
     first_stage_pulls_per_arm = 25
     arm_distribution = 'beta_misspecified'
-    out_folder = "prior"
+    out_folder = "prior_data"
     arm_parameters=  {'alpha': 50, 'beta': 50, 'diff_mean_1': 0.05, 'diff_std_1': 0.01,'diff_mean_2': 0.01, 'diff_std_2': 0.001}
     delta = 0.1
     run_all_k = True
@@ -107,8 +111,6 @@ if arm_distribution == 'bimodal_diff':
             diff = np.random.normal(arm_parameters['diff_mean_2'],arm_parameters['diff_std_2']) 
         arm_means.append(min(max(arm_means[-1]-diff,0.0001),1))
 
-arm_means
-
 experiment_config = {
     'number_arms': n_arms, 
     'sample_size': max_pulls_per_arm*n_arms, 
@@ -167,4 +169,10 @@ save_path = "{}/{}.json".format(out_folder,save_name)
 
 delete_duplicate_results(out_folder,"",aggregate_results)
 
-json.dump(aggregate_results,open('../../results/'+save_path,'w'))
+if is_jupyter:
+    dirname = os.path.abspath('')
+    filename = os.path.join(dirname, '../../results/'+save_path)
+else:
+    dirname = os.path.dirname(os.path.abspath(__file__))
+    filename = os.path.join(dirname, '../../results/'+save_path)
+json.dump(aggregate_results,open(filename,'w'))
