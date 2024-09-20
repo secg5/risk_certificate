@@ -109,7 +109,10 @@ def delete_duplicate_results(folder_name,result_name,data):
     all_results = glob.glob("../../results/{}/{}*.json".format(folder_name,result_name))
 
     for file_name in all_results:
-        load_file = json.load(open(file_name,"r"))
+        try:
+            load_file = json.load(open(file_name,"r"))
+        except:
+            continue 
 
         if 'parameters' in load_file and load_file['parameters'] == data['parameters']:
             try:
@@ -137,10 +140,10 @@ def UCB(arm_means, num_arms, total_steps, delta=1e-4):
             regret[step_count, iter] = arm_means[optimal_arm] - arm_means[greedy_arm]
             emp_means[greedy_arm] += (reward - emp_means[greedy_arm])/num_pulls[greedy_arm]
             ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(2 * np.log(1/delta) / num_pulls[greedy_arm])
-    delta = np.sqrt(2*(1/(num_pulls))*np.log(1/DELTA))
+    delta = np.sqrt(2*(2/(num_pulls))*np.log(1/DELTA))
     emp_means -= delta 
 
-    return emp_means 
+    return emp_means , delta 
 
 def successive_elimination(arm_means, num_arms, total_steps, delta=1e-4):
     """
@@ -173,7 +176,7 @@ def successive_elimination(arm_means, num_arms, total_steps, delta=1e-4):
                 break
         
         # Update confidence bounds
-        confidence_bound = np.sqrt(2 * np.log(1 / delta) / arm_pulls[remaining_arms])
+        confidence_bound = np.sqrt(2 * np.log(2 / delta) / arm_pulls[remaining_arms])
         
         # Calculate upper and lower bounds
         upper_bounds = empirical_means[remaining_arms] + confidence_bound
@@ -189,7 +192,7 @@ def successive_elimination(arm_means, num_arms, total_steps, delta=1e-4):
             if upper_bounds[i] >= lower_bounds[best_arm_index]
         ]
 
-    return lower_bounds 
+    return lower_bounds, confidence_bound
 
 
 # if __name__ == "__main__":
@@ -237,28 +240,40 @@ def run_experiments(config_dict):
         return certificate, B, delta
 
     certificate_split, B_split, delta_split = second_stage(top_k_split, m, mu, train_means_indices)
+    certificate_split_total = certificate_split + delta_split - np.sqrt(2*(1/(m/top_k_split + n/K))*np.log(2/DELTA))
+    delta_split_total = np.sqrt(2*(1/(m/top_k_split + n/K))*np.log(2/DELTA))
     # This is omnicient with respect with the data split
     certificate_omniscient, B_omniscient, delta_omniscient = second_stage(omniscient_k, m, mu, train_means_indices)
     certificate_dominant, B_dominant, delta_dominant = second_stage(dominant_k, m, mu, train_means_indices)
-    true_value = np.max(mu) - np.sqrt(2*(1/m)*np.log(2/DELTA))
-    certificate_ucb = UCB(mu, K, N, delta=DELTA)
-    certificate_se = successive_elimination(mu, K, N, delta=DELTA)
+    true_value = float(np.max(mu))
+
+    certificate_ucb, delta_ucb = UCB(mu, K, N, delta=DELTA)
+    certificate_se, delta_se = successive_elimination(mu, K, N, delta=DELTA)
     # print ("B", "splt", B_split, "Omnicient",B_omniscient,"Dominant", B_dominant)
 
     artifacts = {"sample_split": {"certificate":certificate_split, 
                         "delta": delta_split, 
                         "true_value": true_value}}
+    artifacts["sample_split_total"] = {"certificate":certificate_split_total, 
+                        "delta": delta_split_total, 
+                        "true_value": true_value}
+
     artifacts["omniscient"] = {"certificate":certificate_omniscient, "delta": delta_omniscient,"true_value": true_value}
     artifacts["dominant"] = {"certificate":certificate_dominant, "delta": delta_dominant,"true_value": true_value}
-    artifacts["ucb"] = {'certificate': certificate_ucb, "true_value": true_value}
-    artifacts["successive_elimination"] = {'certificate': certificate_se, "true_value": true_value}
+    artifacts["ucb"] = {'certificate': certificate_ucb, "true_value": true_value, 'delta': delta_ucb}
+    artifacts["successive_elimination"] = {'certificate': certificate_se, "true_value": true_value, 'delta': delta_se}
 
     if config.run_all_k:
         for new_k in range(1,K+1):
-            certificate_k, _, _ = second_stage(new_k, m, mu, train_means_indices)
-            artifacts["k_{}".format(new_k)] = {'certificate': certificate_k, "true_value": true_value}
+            certificate_k, _, delta_k = second_stage(new_k, m, mu, train_means_indices)
+            artifacts["k_{}".format(new_k)] = {'certificate': certificate_k, "true_value": true_value, 'delta': delta_k}
 
-    if config.arm_distribution == 'beta':
+        artifacts["random"] = artifacts["k_{}".format(np.random.randint(1,K))]
+        artifacts["one_stage"] = deepcopy(artifacts["k_{}".format(K)])
+        artifacts["one_stage"]["delta"] = np.sqrt(2*1/((N//K))*np.log(2/DELTA))
+        artifacts["one_stage"]["certificate"] += (artifacts["k_{}".format(K)]["delta"]-artifacts["one_stage"]["delta"])
+
+    if config.arm_distribution == 'beta' or config.arm_distribution == "beta_misspecified":
         new_alphas = []
         new_betas = []
 
@@ -300,7 +315,7 @@ def run_experiments(config_dict):
                 curr_value = next_best_value[0]
                 current_set.append(next_best_value[1])
 
-        artifacts["prior"] = {'certificate': [curr_value], "true_value": true_value}
+        artifacts["prior"] = {'certificate': [curr_value], "true_value": true_value, 'delta': np.sqrt(2*(1/((N-n)//len(new_set)))*np.log(2/DELTA))}
 
     # print(certificate_split, B_split, delta_split)
     return artifacts

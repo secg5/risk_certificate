@@ -15,8 +15,11 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
-sys.path.append('/Users/scortesg/Documents/risk_certificate')
+# +
+# import sys
+# sys.path.append('/Users/scortesg/Documents/risk_certificate')
+# sys.path.append('/usr0/home/naveenr/projects/risk_certificate')
+# -
 
 import matplotlib.pyplot as plt
 import pickle
@@ -26,21 +29,23 @@ import argparse
 import secrets
 from certificate.run_simulations import run_experiments, delete_duplicate_results
 import json 
+import sys
+import os
 
 is_jupyter = 'ipykernel' in sys.modules
 
 # +
 if is_jupyter: 
     seed        = 43
-    trials = 25
+    trials = 100
     n_arms = 10
-    max_pulls_per_arm = 500
-    first_stage_pulls_per_arm = 5
-    arm_distribution = 'bimodal_diff'
-    out_folder = "baseline_comparison"
-    arm_parameters=  {'alpha': 2, 'beta': 2, 'diff_mean_1': 0.05, 'diff_std_1': 0.05,'diff_mean_2': 0.01, 'diff_std_2': 0.001}
+    max_pulls_per_arm = 50
+    first_stage_pulls_per_arm = 25
+    arm_distribution = 'beta_misspecified'
+    out_folder = "prior_data"
+    arm_parameters=  {'alpha': 50, 'beta': 50, 'diff_mean_1': 0.05, 'diff_std_1': 0.01,'diff_mean_2': 0.01, 'diff_std_2': 0.001}
     delta = 0.1
-    run_all_k = False
+    run_all_k = True
 else:
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', help='Random Seed', type=int, default=42)
@@ -90,6 +95,8 @@ for i in range(n_arms):
         arm_means.append(random.random())
     elif arm_distribution == 'beta':
         arm_means.append(np.random.beta(arm_parameters['alpha'],arm_parameters['beta']))
+    elif arm_distribution == 'beta_misspecified':
+        arm_means.append(np.clip(np.random.beta(arm_parameters['alpha'],arm_parameters['beta']) + np.random.normal(arm_parameters['diff_mean_1'],arm_parameters['diff_std_1']),0,1))
 if arm_distribution == 'unimodal_diff':
     arm_means.append(np.random.random())    
     for i in range(1,n_arms):
@@ -103,21 +110,6 @@ if arm_distribution == 'bimodal_diff':
         else:
             diff = np.random.normal(arm_parameters['diff_mean_2'],arm_parameters['diff_std_2']) 
         arm_means.append(min(max(arm_means[-1]-diff,0.0001),1))
-if arm_distribution == "bimodal":
-    # Generate means for one-fourth of the arms (0.8 to 0.9)
-    num_high_means = n_arms // 20
-    high_means = [random.uniform(0.8, 0.9) for _ in range(num_high_means)]
-
-    # Generate means for three-fourths of the arms (0.1 to 1.5)
-    num_low_means = n_arms - num_high_means
-    low_means = [random.uniform(0.1, 0.15) for _ in range(num_low_means)]
-
-    # Combine the two lists to form arm_means
-    arm_means = high_means + low_means
-
-    # Shuffle the arm_means to mix the values
-    random.shuffle(arm_means)
-
 
 experiment_config = {
     'number_arms': n_arms, 
@@ -147,8 +139,29 @@ aggregate_results['parameters']['seed'] = seed
 for method in all_results[0]:
     aggregate_results[method] = {}
     aggregate_results[method]['certificate'] = [max(i[method]['certificate']) for i in all_results]
+    aggregate_results[method]['delta'] = [i[method]['delta'].tolist() for i in all_results]
     aggregate_results[method]['true_value'] = all_results[0][method]['true_value']
+
 # -
+
+np.mean(aggregate_results['sample_split_total']['certificate'])
+
+np.mean(aggregate_results['sample_split']['certificate'])
+
+if 'prior' in aggregate_results:
+    print(np.mean(aggregate_results['prior']['certificate'])/np.mean(aggregate_results['sample_split_total']['certificate']))
+
+np.mean(aggregate_results['random']['certificate'])
+
+np.mean(aggregate_results['k_{}'.format(n_arms)]['delta'])
+
+np.mean(aggregate_results['one_stage']['certificate'])
+
+np.mean(aggregate_results['k_{}'.format(1)]['certificate'])
+
+np.mean(aggregate_results['omniscient']['certificate'])
+
+np.mean(aggregate_results['k_{}'.format(n_arms)]['true_value'])-np.mean(aggregate_results['omniscient']['delta'])
 
 # ## Write Data
 
@@ -156,6 +169,10 @@ save_path = "{}/{}.json".format(out_folder,save_name)
 
 delete_duplicate_results(out_folder,"",aggregate_results)
 
-json.dump(aggregate_results,open('../../results/'+save_path,'w'))
-
-
+if is_jupyter:
+    dirname = os.path.abspath('')
+    filename = os.path.join(dirname, '../../results/'+save_path)
+else:
+    dirname = os.path.dirname(os.path.abspath(__file__))
+    filename = os.path.join(dirname, '../../results/'+save_path)
+json.dump(aggregate_results,open(filename,'w'))
