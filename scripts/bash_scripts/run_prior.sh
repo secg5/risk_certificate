@@ -11,36 +11,62 @@ do
         seed=$((${session}+${start_seed}))
         echo ${seed}
 
-        trials=25
+        trials=50
         arm_distribution=beta
         out_folder=prior_data
         n_arms=10
         delta=0.1
+        max_pulls_per_arm=50
+        first_stage_pulls_per_arm=25
 
-        for alpha in 1 2 5
+        # for alpha in 1 2 4 8 16 32
+        # do 
+        #     beta=${alpha}
+        #     tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta}  --run_all_k" ENTER
+        # done 
+
+        # beta=1
+        # for alpha in 1 2 4 8
+        # do 
+        #     tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta}  --run_all_k" ENTER
+        # done 
+
+        # alpha=1
+        # for beta in 1 2 4 8
+        # do 
+        #     tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta}  --run_all_k" ENTER
+        # done 
+
+        # for alpha in 2 4 8 16 32
+        # do 
+        #     frac=0.5 
+        #     beta=$(echo "${alpha}*${frac}" | bc)
+        #     tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta}  --run_all_k" ENTER
+        # done 
+
+        # for alpha in 1 2 4 8 16 32
+        # do 
+        #     frac=0.25
+        #     beta=$(echo "${alpha}*${frac}" | bc)
+        #     tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta}  --run_all_k" ENTER
+        # done 
+
+        arm_distribution=beta_misspecified
+        for diff_mean_1 in -0.2 -0.1 -0.05 0.05 0.1 0.2
         do 
-            for beta in 1 2 5 
-            do 
-                max_pulls_per_arm=20
-                first_stage_pulls_per_arm=10
-                tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta} --run_all_k" ENTER
-
-                max_pulls_per_arm=50
-                first_stage_pulls_per_arm=25
-                tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta}  --run_all_k" ENTER
-
-                max_pulls_per_arm=100
-                first_stage_pulls_per_arm=50
-                tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta}  --run_all_k" ENTER
-            done 
+            alpha=2
+            beta=2
+            diff_std_1=0.1
+            tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta} --diff_mean_1 ${diff_mean_1} --diff_std_1 ${diff_std_1}  --run_all_k" ENTER
         done 
 
+
+        for diff_std_1 in 0.01 0.05 0.1 0.25
+        do 
+            alpha=2
+            beta=2
+            diff_mean_1=0
+            tmux send-keys -t match_${session} "conda activate feedback; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --alpha ${alpha} --beta ${beta} --diff_mean_1 ${diff_mean_1} --diff_std_1 ${diff_std_1}  --run_all_k" ENTER
+        done 
     done 
 done 
-
-
-# 1. Compare amongst k
-# 2. Compare to UCB
-# 3. Vary N, M
-# 4. Vary Gaps 
-# 5. Use Prior 
