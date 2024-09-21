@@ -58,7 +58,7 @@ def run_algorithm(first_stage, K, n, m, mu):
     test_means = test_data.mean(axis=1)
 
     srt_test_means = np.take_along_axis(test_means, train_means_indices, axis=0)
-    delta = np.sqrt((np.arange(K)+1)/m)
+    delta = np.sqrt((np.arange(K)+1)/(2*m))
 
     values = []
     for i in range(K):
@@ -139,8 +139,11 @@ def UCB(arm_means, num_arms, total_steps, delta=1e-4):
             num_pulls[greedy_arm] += 1
             regret[step_count, iter] = arm_means[optimal_arm] - arm_means[greedy_arm]
             emp_means[greedy_arm] += (reward - emp_means[greedy_arm])/num_pulls[greedy_arm]
-            ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(2 * np.log(1/delta) / num_pulls[greedy_arm])
-    delta = np.sqrt(2*(2/(num_pulls))*np.log(1/DELTA))
+            # We are setting the exploration to be constant as oposse to decreasing (log(t))
+            # ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(1/delta) / (2*num_pulls[greedy_arm]))
+            ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(iter + 1) / (num_pulls[greedy_arm]))
+    delta = np.sqrt((1/(2*num_pulls))*np.log(2/DELTA))
+    # np.sqrt(2*(k/m)*np.log(2/DELTA))
     emp_means -= delta 
 
     return emp_means , delta 
@@ -169,16 +172,18 @@ def successive_elimination(arm_means, num_arms, total_steps, delta=1e-4):
         for arm in remaining_arms:
             # Pull each remaining arm once
             arm_pulls[arm] += 1
-            reward = np.random.normal(arm_means[arm], 1)  # Simulated reward, assuming unit variance
+            reward = np.random.binomial(1, arm_means[arm])
+            # np.random.normal(arm_means[arm], 1)  # Simulated reward, assuming unit variance
             empirical_means[arm] = ((empirical_means[arm] * (arm_pulls[arm] - 1)) + reward) / arm_pulls[arm]
             step += 1
             if step >= total_steps:
                 break
         
         # Update confidence bounds
-        confidence_bound = np.sqrt(2 * np.log(2 / delta) / arm_pulls[remaining_arms])
+        confidence_bound = np.sqrt(np.log(2 / delta) / 2* arm_pulls[remaining_arms])
         
         # Calculate upper and lower bounds
+        # Here we do need the 2/delta
         upper_bounds = empirical_means[remaining_arms] + confidence_bound
         lower_bounds = empirical_means[remaining_arms] - confidence_bound
         
@@ -193,6 +198,10 @@ def successive_elimination(arm_means, num_arms, total_steps, delta=1e-4):
         ]
 
     return lower_bounds, confidence_bound
+
+
+def compute_hoeffding_bound(n_data, delta=1e-4):
+    return np.sqrt((1/(2*n_data))*np.log(1/delta))
 
 
 # if __name__ == "__main__":
@@ -211,8 +220,6 @@ def run_experiments(config_dict):
     # N = Budget
     N = config.sample_size  # Number of samples to draw from each distribution
     
-    # TODO: Decide if the code should do a single run for a particular p
-    # mu = np.random.rand(K) # Random probabilities for each distribution
     mu = config.distribution
     n = config.first_stage_size
     m = N - n
@@ -222,26 +229,22 @@ def run_experiments(config_dict):
     
 
     mu = np.array(mu)
-    # print(mu, K, "n", n, "m", m)
     first_stage = sample_bernoulli(n, K, mu)
-
     top_k_split, omniscient_k, dominant_k, train_means_indices = run_algorithm(first_stage, K, n, m, mu)
-
     DELTA = config.delta 
 
-    # print("K", top_k_split, omniscient_k, dominant_k)
     def second_stage(k, m, mu, train_means_indices):
-        # import pdb; pdb.set_trace()
         B = train_means_indices[:k]
         second_stage = sample_bernoulli(m, k, mu, B)
-        delta = np.sqrt(2*(k/m)*np.log(2/DELTA))
+        delta = compute_hoeffding_bound(m/k, DELTA)
         certificate = second_stage.mean(axis=1) - delta
-        
         return certificate, B, delta
 
     certificate_split, B_split, delta_split = second_stage(top_k_split, m, mu, train_means_indices)
-    certificate_split_total = certificate_split + delta_split - np.sqrt(2*(1/(m/top_k_split + n/K))*np.log(2/DELTA))
-    delta_split_total = np.sqrt(2*(1/(m/top_k_split + n/K))*np.log(2/DELTA))
+    # delta_split_total = np.sqrt((1/(2*(m/top_k_split + n/K)))*np.log(2/DELTA))
+    delta_split_total = compute_hoeffding_bound(m/top_k_split + n/K, DELTA)
+    certificate_split_total = certificate_split + delta_split - delta_split_total
+    
     # This is omnicient with respect with the data split
     certificate_omniscient, B_omniscient, delta_omniscient = second_stage(omniscient_k, m, mu, train_means_indices)
     certificate_dominant, B_dominant, delta_dominant = second_stage(dominant_k, m, mu, train_means_indices)
@@ -249,7 +252,6 @@ def run_experiments(config_dict):
 
     certificate_ucb, delta_ucb = UCB(mu, K, N, delta=DELTA)
     certificate_se, delta_se = successive_elimination(mu, K, N, delta=DELTA)
-    # print ("B", "splt", B_split, "Omnicient",B_omniscient,"Dominant", B_dominant)
 
     artifacts = {"sample_split": {"certificate":certificate_split, 
                         "delta": delta_split, 
@@ -270,7 +272,7 @@ def run_experiments(config_dict):
 
         artifacts["random"] = artifacts["k_{}".format(np.random.randint(1,K))]
         artifacts["one_stage"] = deepcopy(artifacts["k_{}".format(K)])
-        artifacts["one_stage"]["delta"] = np.sqrt(2*1/((N//K))*np.log(2/DELTA))
+        artifacts["one_stage"]["delta"] = compute_hoeffding_bound(N//K, DELTA)
         artifacts["one_stage"]["certificate"] += (artifacts["k_{}".format(K)]["delta"]-artifacts["one_stage"]["delta"])
 
     if config.arm_distribution == 'beta' or config.arm_distribution == "beta_misspecified":
@@ -302,7 +304,8 @@ def run_experiments(config_dict):
                     means = np.array([np.random.beta(new_alphas[new_set[j]],new_betas[new_set[j]]) for j in range(len(new_set))])
                     sampled_values = sample_bernoulli((N-n)//len(new_set), len(new_set), means)
                     predicted_means = np.mean(sampled_values,axis=1)
-                    min_certificate.append(np.max(predicted_means)-np.sqrt(2*(1/((N-n)//len(new_set)))*np.log(2/DELTA)))
+                    min_certificate_delta = compute_hoeffding_bound((N-n)//len(new_set), DELTA)
+                    min_certificate.append(np.max(predicted_means) - min_certificate_delta)
                 min_certificate = np.mean(min_certificate)
 
                 if next_best_value[0] < min_certificate:
@@ -315,7 +318,7 @@ def run_experiments(config_dict):
                 curr_value = next_best_value[0]
                 current_set.append(next_best_value[1])
 
-        artifacts["prior"] = {'certificate': [curr_value], "true_value": true_value, 'delta': np.sqrt(2*(1/((N-n)//len(new_set)))*np.log(2/DELTA))}
+        artifacts["prior"] = {'certificate': [curr_value], "true_value": true_value, 'delta': compute_hoeffding_bound((N-n)//len(current_set), DELTA)}
 
     # print(certificate_split, B_split, delta_split)
     return artifacts
