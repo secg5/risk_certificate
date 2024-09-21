@@ -142,7 +142,7 @@ def UCB(arm_means, num_arms, total_steps, delta=1e-4):
             # We are setting the exploration to be constant as oposse to decreasing (log(t))
             # ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(1/delta) / (2*num_pulls[greedy_arm]))
             ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(iter + 1) / (num_pulls[greedy_arm]))
-    delta = np.sqrt((1/(2*num_pulls))*np.log(2/DELTA))
+    delta = np.sqrt((1/(2*num_pulls))*np.log(1/DELTA))
     # np.sqrt(2*(k/m)*np.log(2/DELTA))
     emp_means -= delta 
 
@@ -172,15 +172,15 @@ def successive_elimination(arm_means, num_arms, total_steps, delta=1e-4):
         for arm in remaining_arms:
             # Pull each remaining arm once
             arm_pulls[arm] += 1
-            reward = np.random.binomial(1, arm_means[arm])
-            # np.random.normal(arm_means[arm], 1)  # Simulated reward, assuming unit variance
+            reward =  np.random.binomial(1, arm_means[arm])
+            #   np.random.normal(arm_means[arm], 1) # Simulated reward, assuming unit variance
             empirical_means[arm] = ((empirical_means[arm] * (arm_pulls[arm] - 1)) + reward) / arm_pulls[arm]
             step += 1
             if step >= total_steps:
                 break
         
         # Update confidence bounds
-        confidence_bound = np.sqrt(np.log(2 / delta) / 2* arm_pulls[remaining_arms])
+        confidence_bound = np.sqrt(np.log(2 / delta) / (2* arm_pulls[remaining_arms]))
         
         # Calculate upper and lower bounds
         # Here we do need the 2/delta
