@@ -142,11 +142,12 @@ def UCB(arm_means, num_arms, total_steps, delta=1e-4):
             # We are setting the exploration to be constant as oposse to decreasing (log(t))
             # ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(1/delta) / (2*num_pulls[greedy_arm]))
             ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(iter + 1) / (num_pulls[greedy_arm]))
+
     delta = np.sqrt((1/(2*num_pulls))*np.log(1/DELTA))
     # np.sqrt(2*(k/m)*np.log(2/DELTA))
-    emp_means -= delta 
+    certificates = emp_means -  delta 
 
-    return emp_means , delta 
+    return certificates , delta 
 
 def successive_elimination(arm_means, num_arms, total_steps, delta=1e-4):
     """
