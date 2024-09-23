@@ -129,6 +129,7 @@ def UCB(arm_means, num_arms, total_steps, delta=1e-4):
     regret = np.zeros([total_steps, num_iterations])
     DELTA = 0.1 
     for iter in range(num_iterations):
+        # Why the 100?
         ucb = 100 * np.ones(num_arms)
         emp_means = np.zeros(num_arms)
         num_pulls = np.zeros(num_arms)
@@ -140,8 +141,8 @@ def UCB(arm_means, num_arms, total_steps, delta=1e-4):
             regret[step_count, iter] = arm_means[optimal_arm] - arm_means[greedy_arm]
             emp_means[greedy_arm] += (reward - emp_means[greedy_arm])/num_pulls[greedy_arm]
             # We are setting the exploration to be constant as oposse to decreasing (log(t))
-            # ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(1/delta) / (2*num_pulls[greedy_arm]))
-            ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(iter + 1) / (num_pulls[greedy_arm]))
+            ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(1/delta) / (2*num_pulls[greedy_arm]))
+            # ucb[greedy_arm] = emp_means[greedy_arm] + np.sqrt(np.log(iter + 1) / (num_pulls[greedy_arm]))
 
     delta = np.sqrt((1/(2*num_pulls))*np.log(1/DELTA))
     # np.sqrt(2*(k/m)*np.log(2/DELTA))
@@ -367,10 +368,12 @@ def aggregate_data(results):
         temp = {}
         for key in row:
             if key != 'parameters':
+
                 temp[key] = row[key]['certificate']
+                # temp[key] = row[key]['delta']
         r.append(temp)
     results = r
-
+    
     ret_dict = {}
     for l in results:
         for k in l:

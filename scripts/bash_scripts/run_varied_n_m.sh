@@ -6,52 +6,53 @@ do
     echo "Session: match_${session}"
     cd ~/Documents/risk_certificate/scripts/notebooks
 
-    for start_seed in 42 45 48 51 54
+    for start_seed in 42
     do 
         seed=$((${session}+${start_seed}))
         echo "Seed: ${seed}"
 
         # trials=25
+        # ["bimodal_best", "bimodal_better", "bimodal_normal", "bimodal_worse"]
         trials=10
-        arm_distribution=bimodal
+        arm_distribution=bimodal_worse
         out_folder=vary_n_m
-        delta=0.1
-
-        for n_arms in 200
-        do 
-            max_pulls_per_arm=10
-            for first_stage_pulls_per_arm in 1 2 4 5 9
+        
+        for delta in 0.9 0.1 0.01
+        do
+            for n_arms in 200
             do 
-                echo "Running: conda activate risk_certificates; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k"
-                # conda init
-                # conda activate risk_certificates
-                python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k
-            done 
+                max_pulls_per_arm=10
+                for first_stage_pulls_per_arm in 1 2 4 5 9
+                do 
+                    echo "Running: conda activate risk_certificates; python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k"
+                    # conda init
+                    # conda activate risk_certificates
+                    python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k
+                done 
 
-            # Uncomment to run additional configurations
-            max_pulls_per_arm=50
-            for first_stage_pulls_per_arm in 5 10 20 25 45
-            do 
-                echo "Running: python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k"
-                python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k
-            done 
+                # Uncomment to run additional configurations
+                max_pulls_per_arm=50
+                for first_stage_pulls_per_arm in 5 10 20 25 45
+                do 
+                    echo "Running: python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k"
+                    python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k
+                done 
 
-            max_pulls_per_arm=100
-            for first_stage_pulls_per_arm in 10 20 40 50 90
-            do 
-                echo "Running: python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k"
-                python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k
+                max_pulls_per_arm=100
+                for first_stage_pulls_per_arm in 10 20 40 50 90
+                do 
+                    echo "Running: python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k"
+                    python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k
+                done 
+                
+                max_pulls_per_arm=500
+                for first_stage_pulls_per_arm in 50 100 200 250 450
+                do 
+                    echo "Running: python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k"
+                    python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k
+                done 
             done 
-            
-            max_pulls_per_arm=500
-            for first_stage_pulls_per_arm in 50 100 200 250 450
-            do 
-                echo "Running: python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k"
-                python all_policies.py --seed ${seed} --out_folder ${out_folder} --trials ${trials} --arm_distribution ${arm_distribution} --delta ${delta} --n_arms ${n_arms} --max_pulls_per_arm ${max_pulls_per_arm} --first_stage_pulls_per_arm ${first_stage_pulls_per_arm} --run_all_k
-            done 
-
-            
-        done 
+        done
     done 
 done
 
