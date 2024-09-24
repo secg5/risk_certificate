@@ -14,10 +14,10 @@ do
         # trials=25
         # ["bimodal_best", "bimodal_better", "bimodal_normal", "bimodal_worse"]
         trials=10
-        arm_distribution=bimodal_worse
+        arm_distribution=bimodal_zero
         out_folder=vary_n_m
         
-        for delta in 0.9 0.1 0.01
+        for delta in 0.1
         do
             for n_arms in 200
             do 

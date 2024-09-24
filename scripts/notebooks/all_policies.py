@@ -119,7 +119,7 @@ def bimodal_arms(n_arms,num_high_means):
     high_means = [random.uniform(0.9, 0.99) for _ in range(num_high_means)]
     # Generate means for three-fourths of the arms (0.1 to 1.5)
     num_low_means = n_arms - num_high_means
-    low_means = [random.uniform(0.0001, 0.1) for _ in range(num_low_means)]
+    low_means = [random.uniform(0.5, 0.501) for _ in range(num_low_means)]
     # Combine the two lists to form arm_means
     arm_means = high_means + low_means
     # Shuffle the arm_means to mix the values
@@ -139,12 +139,12 @@ if arm_distribution == "bimodal_normal":
 if arm_distribution == "bimodal_worse":
     num_high_means = n_arms
     arm_means = bimodal_arms(n_arms, num_high_means)
-if arm_distribution == "bimodal_perfect":
-    num_high_means = n_arms // 20
+if arm_distribution == "bimodal_zero":
+    num_high_means = 0
     arm_means = bimodal_arms(n_arms, num_high_means)
-    arm_means[42] = 1
-    arm_means[43] = 1
-    arm_means[44] = 1
+    # arm_means[42] = 1
+    # arm_means[43] = 1
+    # arm_means[44] = 1
 
 
 
