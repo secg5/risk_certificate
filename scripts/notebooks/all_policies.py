@@ -15,19 +15,14 @@
 # %load_ext autoreload
 # %autoreload 2
 
-# +
-import sys
-sys.path.append('/Users/scortesg/Documents/risk_certificate')
-# sys.path.append('/usr0/home/naveenr/projects/risk_certificate')
-# -
-
 import matplotlib.pyplot as plt
-import pickle
+import csv
 import numpy as np
 import random
 import argparse
 import secrets
-from certificate.run_simulations import run_experiments, delete_duplicate_results
+from certificate.run_simulations import run_experiments, generate_arm_means
+from certificate.utils import delete_duplicate_results
 import json 
 import sys
 import os
@@ -41,9 +36,9 @@ if is_jupyter:
     n_arms = 10
     max_pulls_per_arm = 50
     first_stage_pulls_per_arm = 25
-    arm_distribution = 'beta_misspecified'
-    out_folder = "prior_data"
-    arm_parameters=  {'alpha': 50, 'beta': 50, 'diff_mean_1': 0.05, 'diff_std_1': 0.01,'diff_mean_2': 0.01, 'diff_std_2': 0.001}
+    arm_distribution = 'uniform'
+    out_folder = "baseline"
+    arm_parameters=  {'uniform_low': 0, 'uniform_high': 1}
     delta = 0.1
     run_all_k = True
 else:
@@ -62,6 +57,8 @@ else:
     parser.add_argument('--diff_std_1',        help='Maximum pulls per arm', type=float, default=2)
     parser.add_argument('--diff_mean_2',        help='Maximum pulls per arm', type=float, default=2)
     parser.add_argument('--diff_std_2',        help='Maximum pulls per arm', type=float, default=2)
+    parser.add_argument('--uniform_low',        help='Uniform Low', type=float, default=0)
+    parser.add_argument('--uniform_high',        help='Uniform High', type=float, default=1)
     parser.add_argument('--out_folder', help='Which folder to write results to', type=str, default='policy_comparison')
 
     args = parser.parse_args()
@@ -80,7 +77,9 @@ else:
     diff_std_1 = args.diff_std_1 
     diff_mean_2 = args.diff_mean_2 
     diff_std_2 = args.diff_std_2
-    arm_parameters = {'alpha': alpha, 'beta': beta, 'diff_mean_1': diff_mean_1, 'diff_mean_2': diff_mean_2, 'diff_std_1': diff_std_1, 'diff_std_2': diff_std_2}
+    uniform_low = args.uniform_low 
+    uniform_high = args.uniform_high 
+    arm_parameters = {'alpha': alpha, 'beta': beta, 'diff_mean_1': diff_mean_1, 'diff_mean_2': diff_mean_2, 'diff_std_1': diff_std_1, 'diff_std_2': diff_std_2, 'uniform_low': uniform_low, 'uniform_high': uniform_high}
     run_all_k = args.run_all_k
 
 save_name = secrets.token_hex(4)  
@@ -89,67 +88,13 @@ save_name = secrets.token_hex(4)
 random.seed(seed)
 np.random.seed(seed)
 
-arm_means = []
-for i in range(n_arms):
-    if arm_distribution == 'uniform':
-        arm_means.append(random.random())
-    elif arm_distribution == 'beta':
-        arm_means.append(np.random.beta(arm_parameters['alpha'],arm_parameters['beta']))
-    elif arm_distribution == 'beta_misspecified':
-        arm_means.append(np.clip(np.random.beta(arm_parameters['alpha'],arm_parameters['beta']) + np.random.normal(arm_parameters['diff_mean_1'],arm_parameters['diff_std_1']),0,1))
-if arm_distribution == 'unimodal_diff':
-    arm_means.append(np.random.random())    
-    for i in range(1,n_arms):
-        diff = np.random.normal(arm_parameters['diff_mean_1'],arm_parameters['diff_std_1']) 
-        arm_means.append(min(max(arm_means[-1]-diff,0.0001),1))
-if arm_distribution == 'bimodal_diff':
-    arm_means.append(np.random.random())    
-    for i in range(1,n_arms):
-        if np.random.random() < 0.5:
-            diff = np.random.normal(arm_parameters['diff_mean_1'],arm_parameters['diff_std_1']) 
-        else:
-            diff = np.random.normal(arm_parameters['diff_mean_2'],arm_parameters['diff_std_2']) 
-        arm_means.append(min(max(arm_means[-1]-diff,0.0001),1))
-    # import pdb;pdb.set_trace()
+if arm_distribution == 'effect_size':
+    a = list(csv.DictReader(open('../../data/meta_analyses.csv')))
+    arm_parameters['all_effect_sizes'] = [float(i['effect']) for i in a if i['ma.doi'] == '10.1093/gerona/glp082']
 
+# ## Run Policies
 
-def bimodal_arms(n_arms,num_high_means):
-    # Generate means for one-fourth of the arms (0.8 to 0.9)
-    
-    high_means = [random.uniform(0.9, 0.99) for _ in range(num_high_means)]
-    # Generate means for three-fourths of the arms (0.1 to 1.5)
-    num_low_means = n_arms - num_high_means
-    low_means = [random.uniform(0.5, 0.501) for _ in range(num_low_means)]
-    # Combine the two lists to form arm_means
-    arm_means = high_means + low_means
-    # Shuffle the arm_means to mix the values
-    random.shuffle(arm_means)
-    return arm_means
-
-if arm_distribution == "bimodal_best":
-    num_high_means = n_arms // 20
-    arm_means = bimodal_arms(n_arms, num_high_means)
-
-if arm_distribution == "bimodal_better":
-    num_high_means = n_arms // 10
-    arm_means = bimodal_arms(n_arms, num_high_means)
-if arm_distribution == "bimodal_normal":
-    num_high_means = n_arms // 2
-    arm_means = bimodal_arms(n_arms, num_high_means)
-if arm_distribution == "bimodal_worse":
-    num_high_means = n_arms
-    arm_means = bimodal_arms(n_arms, num_high_means)
-if arm_distribution == "bimodal_zero":
-    num_high_means = 0
-    arm_means = bimodal_arms(n_arms, num_high_means)
-    # arm_means[42] = 1
-    # arm_means[43] = 1
-    # arm_means[44] = 1
-
-
-
-# if arm_distribution =="good_mu":
-
+arm_means = generate_arm_means(arm_distribution,arm_parameters,n_arms)
 
 experiment_config = {
     'number_arms': n_arms, 
@@ -160,7 +105,8 @@ experiment_config = {
     'random_seed': seed+1, 
     'delta': delta,
     'run_all_k': run_all_k, 
-    'reward_parameters': arm_parameters
+    'reward_parameters': arm_parameters, 
+    'true_value': np.max(arm_means)
 }
 
 # +
@@ -179,29 +125,13 @@ aggregate_results['parameters']['seed'] = seed
 for method in all_results[0]:
     aggregate_results[method] = {}
     aggregate_results[method]['certificate'] = [max(i[method]['certificate']) for i in all_results]
-    aggregate_results[method]['delta'] = [i[method]['delta'].tolist() for i in all_results]
-    aggregate_results[method]['true_value'] = all_results[0][method]['true_value']
+    aggregate_results[method]['certificate_width'] = [i[method]['certificate_width'].tolist() for i in all_results]
 
 # -
 
-np.mean(aggregate_results['sample_split_total']['certificate'])
-
-np.mean(aggregate_results['sample_split']['certificate'])
-
-if 'prior' in aggregate_results:
-    print(np.mean(aggregate_results['prior']['certificate'])/np.mean(aggregate_results['sample_split_total']['certificate']))
-
-np.mean(aggregate_results['random']['certificate'])
-
-np.mean(aggregate_results['k_{}'.format(n_arms)]['delta'])
-
-np.mean(aggregate_results['one_stage']['certificate'])
-
-np.mean(aggregate_results['k_{}'.format(1)]['certificate'])
-
-np.mean(aggregate_results['omniscient']['certificate'])
-
-np.mean(aggregate_results['k_{}'.format(n_arms)]['true_value'])-np.mean(aggregate_results['omniscient']['delta'])
+for i in aggregate_results:
+    if 'certificate' in aggregate_results[i]:
+        print(i,np.mean(aggregate_results[i]['certificate']))
 
 # ## Write Data
 

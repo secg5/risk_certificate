@@ -131,6 +131,35 @@ def compute_hoeffding_bound_one_way(n_data, delta):
     return np.sqrt(np.log(2 / delta) / (2* n_data))
 
 
+
+def compute_subgaussian_bound(n_data, delta):
+    """Given n pulls of an arm, compute the lower bound
+        on the \delta^th percentile for the mean
+        Using a subgaussian Bound with \sigma=1
+    
+    Arguments:
+        n_data: Integer, number of times algorithm has pulled
+        delta: Float, percent chance of success of Hoeffding
+    
+    Returns: Float, lower bound (when subtracted from \mu)"""
+
+    return np.sqrt((2/(n_data))*np.log(1/delta))
+
+def compute_subgaussian_bound_one_way(n_data, delta):
+    """Given n pulls of an arm, compute the lower bound
+        on the \delta^th percentile for the mean
+        Using a subgaussian Bound with \sigma=1
+    
+    Arguments:
+        n_data: Integer, number of times algorithm has pulled
+        delta: Float, percent chance of success of Hoeffding
+    
+    Returns: Float, lower bound (when subtracted from \mu)"""
+
+    return np.sqrt((2/(n_data))*np.log(2/delta))
+
+
+
 def sample_bernoulli(N, K, mu, indices=None):
     """
     Generate a sample of N from K different Bernoulli distributions with given probabilities.
@@ -147,3 +176,21 @@ def sample_bernoulli(N, K, mu, indices=None):
         indices = range(K)
     samples = np.random.binomial(1, mu[indices, np.newaxis], (K, N//K))
     return samples
+
+def sample_normal(N, K, mu, indices=None):
+    """
+    Generate a sample of N from K different Bernoulli distributions with given probabilities.
+    
+    Arguments:
+        N (int): Number of samples to draw total.
+        K (int): Number of different Bernoulli distributions.
+        p (list or np.array): Probabilities for each of the K distributions.
+    
+    Returns:
+        np.array: A K x N array where each row contains N samples from the corresponding Bernoulli distribution.
+    """
+    if indices is None:
+        indices = range(K)
+    samples = np.random.normal(mu[indices, np.newaxis], 1,(K, N//K))
+    return samples
+

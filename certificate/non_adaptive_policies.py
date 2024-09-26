@@ -1,4 +1,4 @@
-from certificate.utils import compute_hoeffding_bound, compute_hoeffding_bound_one_way, sample_bernoulli
+from certificate.utils import compute_hoeffding_bound, compute_hoeffding_bound_one_way, compute_subgaussian_bound_one_way, compute_subgaussian_bound, sample_bernoulli, sample_normal
 import numpy as np
 
 def compute_top_k(first_stage, n, s_1, s_2, mu):
@@ -38,26 +38,34 @@ def compute_top_k(first_stage, n, s_1, s_2, mu):
     best_estimate = np.argmax(values)    
     top_k_split = best_estimate + 1
 
-    aux = values - np.roll(srt_test_means, -1, axis=0)
-    non_negative_mask = aux >= 0
-    non_negative_indices = np.where(non_negative_mask)[0]
-    dominant_k = non_negative_indices[0] + 1 if non_negative_indices.size > 0 else 1
-    str_mu = np.take_along_axis(mu, train_means_indices, axis=0)
-    true_values = str_mu - delta
-    omniscient_k = np.argmax(true_values) + 1
+    if len(srt_test_means) == len(values):
+        aux = values - np.roll(srt_test_means, -1, axis=0)
+        non_negative_mask = aux >= 0
+        non_negative_indices = np.where(non_negative_mask)[0]
+        dominant_k = non_negative_indices[0] + 1 if non_negative_indices.size > 0 else 1
+        str_mu = np.take_along_axis(mu, train_means_indices, axis=0)
+        true_values = str_mu - delta
+        omniscient_k = np.argmax(true_values) + 1
     
-    return top_k_split, omniscient_k, dominant_k, train_means_indices
+        return top_k_split, omniscient_k, dominant_k, train_means_indices
+    else:
+        return top_k_split, -1, -1, train_means_indices
 
 
-def fixed_k_policies(k, s_2, arm_means, selected_arms,delta,seed):
+def fixed_k_policies(k, s_2, arm_means, selected_arms,delta,seed, arm_distribution):
     np.random.seed(seed)
     B = selected_arms[:k]
-    second_stage = sample_bernoulli(s_2, k, arm_means, B)
-    lower_bound = compute_hoeffding_bound(s_2/k, delta)
+
+    if arm_distribution == 'effect_size':
+        second_stage = sample_normal(s_2, k, arm_means, B)
+        lower_bound = compute_subgaussian_bound(s_2/k, delta)
+    else:
+        second_stage = sample_bernoulli(s_2, k, arm_means, B)
+        lower_bound = compute_hoeffding_bound(s_2/k, delta)
     certificate = second_stage.mean(axis=1) - lower_bound
     return certificate, lower_bound
 
-def two_stage_thompson_sampling(first_stage,n,delta,s_1,T,mu,seed):
+def two_stage_thompson_sampling_bernoulli(first_stage,n,delta,s_1,T,mu,seed,arm_distribution):
     """Run a two-stage Thompson Sampling Method
     Essentially, given a uniform prior, compute a posterior 
     Then, using this posterior, compute the relative probability for 
@@ -101,15 +109,82 @@ def two_stage_thompson_sampling(first_stage,n,delta,s_1,T,mu,seed):
     empirical_means = np.zeros(n)
     for i in range(n):
         if rounded_arm_pulls[i] > 0:
-            empirical_means[i] = np.mean(sample_bernoulli(int(rounded_arm_pulls[i]), 1, np.array([mu[i]])))
+            if arm_distribution == 'effect_size':
+                empirical_means[i] = np.mean(sample_normal(int(rounded_arm_pulls[i]), 1, np.array([mu[i]])))
+            else:
+                empirical_means[i] = np.mean(sample_bernoulli(int(rounded_arm_pulls[i]), 1, np.array([mu[i]])))
 
-    widths = np.array([compute_hoeffding_bound(rounded_arm_pulls[i],delta) for i in range(n)])
+    if arm_distribution == 'effect_size':
+        widths = np.array([compute_subgaussian_bound(rounded_arm_pulls[i],delta) for i in range(n)])
+    else:
+        widths = np.array([compute_hoeffding_bound(rounded_arm_pulls[i],delta) for i in range(n)])
     certificates = empirical_means-widths
     best_certificate = np.argmax(certificates)
 
     return [certificates[best_certificate]], widths[best_certificate]
+
+def two_stage_thompson_sampling_normal(first_stage,n,delta,s_1,T,mu,seed,arm_distribution):
+    """Run a two-stage Thompson Sampling Method
+    Essentially, given a uniform prior, compute a posterior 
+    Then, using this posterior, compute the relative probability for 
+    each arm being the top, and sample proportional to this
     
-def two_stage_successive_elimination(first_stage,n,arm_means, s_1, T, delta,seed):
+    Arguments:
+        first_stage: 0-1 matrix of size n x s_{1}, with rewards for
+            arm x time stage
+        n: Integer, number of arms
+        delta: Float, confidence we're aiming for
+        s_1: Number of arms pulled in the first stage
+        T: total number of arms pulled
+        mu: True means 
+        seed: Integer, random seed"""
+
+    np.random.seed(seed)
+    new_means = []
+    new_stds = []
+
+    initial_mean = 0
+    initial_std = 1
+
+    for i in range(len(first_stage)):
+        success = np.sum(first_stage[i])
+        total = len(first_stage[i])
+        std = np.std(first_stage[i])
+        new_means.append((1/(1/initial_std**2)+total/(std**2))*(initial_mean/initial_std**2 + success/std**2))
+        new_stds.append((1/(1/initial_std**2)+total/(std**2)))
+    
+    trials = 1000
+    max_arm_rates = np.array([0.0 for i in range(n)])
+
+    for _ in range(trials):
+        p_samples = [np.random.normal(new_means[j],new_stds[j]) for j in range(n)]
+        max_arm_rates[np.argmax(p_samples)] += 1
+    max_arm_rates /= trials 
+
+    rounded_arm_pulls = np.zeros(n)
+    s_2 = T-s_1
+    for i in range(s_2):
+        rounded_arm_pulls[np.random.choice(n,p=max_arm_rates)] += 1
+ 
+    empirical_means = np.zeros(n)
+    for i in range(n):
+        if rounded_arm_pulls[i] > 0:
+            if arm_distribution == 'effect_size':
+                empirical_means[i] = np.mean(sample_normal(int(rounded_arm_pulls[i]), 1, np.array([mu[i]])))
+            else:
+                empirical_means[i] = np.mean(sample_bernoulli(int(rounded_arm_pulls[i]), 1, np.array([mu[i]])))
+
+    if arm_distribution == 'effect_size':
+        widths = np.array([compute_subgaussian_bound(rounded_arm_pulls[i],delta) for i in range(n)])
+    else:
+        widths = np.array([compute_hoeffding_bound(rounded_arm_pulls[i],delta) for i in range(n)])
+    certificates = empirical_means-widths
+    best_certificate = np.argmax(certificates)
+
+    return [certificates[best_certificate]], widths[best_certificate]
+
+
+def two_stage_successive_elimination(first_stage,n,arm_means, s_1, T, delta,seed, arm_distribution):
     """Successive Elimination algorithm for best arm identification.
         Do this in two-stages; first uniform
         Compute Successive Elimination
@@ -138,7 +213,10 @@ def two_stage_successive_elimination(first_stage,n,arm_means, s_1, T, delta,seed
     arm_pulls += s_1//n 
     empirical_means = np.mean(first_stage,axis=1)
     
-    confidence_bound = compute_hoeffding_bound_one_way(arm_pulls,delta)
+    if arm_distribution == 'effect_size':
+        confidence_bound = compute_subgaussian_bound_one_way(arm_pulls,delta)
+    else:
+        confidence_bound = compute_hoeffding_bound_one_way(arm_pulls,delta)
     
     upper_bounds = empirical_means[remaining_arms] + confidence_bound
     lower_bounds = empirical_means[remaining_arms] - confidence_bound
@@ -151,8 +229,12 @@ def two_stage_successive_elimination(first_stage,n,arm_means, s_1, T, delta,seed
     ]
     k = len(remaining_arms)
 
-    second_stage = sample_bernoulli(s_2, k, arm_means, remaining_arms)
-    lower_bound = compute_hoeffding_bound(s_2//k, delta)
+    if arm_distribution == 'effect_size':
+        second_stage = sample_normal(s_2, k, arm_means, remaining_arms)
+        lower_bound = compute_subgaussian_bound(s_2//k, delta)
+    else:
+        second_stage = sample_bernoulli(s_2, k, arm_means, remaining_arms)
+        lower_bound = compute_hoeffding_bound(s_2//k, delta)
     certificate = second_stage.mean(axis=1) - lower_bound
     return certificate, lower_bound
 

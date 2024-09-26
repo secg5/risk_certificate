@@ -1,7 +1,7 @@
 import numpy as np
-from certificate.utils import compute_hoeffding_bound, compute_hoeffding_bound_one_way
+from certificate.utils import compute_hoeffding_bound, compute_hoeffding_bound_one_way, compute_subgaussian_bound, compute_subgaussian_bound_one_way
 
-def UCB(arm_means, num_arms, total_arm_pulls, delta,seed):
+def UCB(arm_means, num_arms, total_arm_pulls, delta,seed,arm_distribution):
     """Run the UCB algorithm to compute the certificate
     
     Arguments:
@@ -20,18 +20,30 @@ def UCB(arm_means, num_arms, total_arm_pulls, delta,seed):
     num_pulls = np.zeros(num_arms)
     for _ in range(total_arm_pulls):
         greedy_arm = np.argmax(ucb)
-        reward = np.random.binomial(1, arm_means[greedy_arm])
+        if arm_distribution == 'effect_size':
+            reward = np.random.normal(arm_means[greedy_arm],1)
+        else:
+            reward = np.random.binomial(1, arm_means[greedy_arm])
         num_pulls[greedy_arm] += 1
         emp_means[greedy_arm] = (emp_means[greedy_arm]*(num_pulls[greedy_arm]-1) + reward)/(num_pulls[greedy_arm])
-        ucb[greedy_arm] = emp_means[greedy_arm] + compute_hoeffding_bound(num_pulls[greedy_arm],delta)
+        ucb[greedy_arm] = emp_means[greedy_arm]
+
+        if arm_distribution == 'effect_size':
+            ucb[greedy_arm] += compute_subgaussian_bound(num_pulls[greedy_arm],delta)
+        else:
+            ucb[greedy_arm] += compute_hoeffding_bound(num_pulls[greedy_arm],delta)
 
     greedy_arm = np.argmax(ucb)
-    lower_bound = compute_hoeffding_bound(num_pulls[greedy_arm],delta)
+
+    if arm_distribution == 'effect_size':
+        lower_bound = compute_subgaussian_bound(num_pulls[greedy_arm],delta)
+    else:
+        lower_bound = compute_hoeffding_bound(num_pulls[greedy_arm],delta)
     certificates = emp_means -  lower_bound  
 
     return certificates, lower_bound 
 
-def successive_elimination(arm_means, num_arms, total_steps, delta,seed):
+def successive_elimination(arm_means, num_arms, total_steps, delta,seed,arm_distribution):
     """Successive Elimination algorithm for best arm identification.
 
     Parameters:
@@ -53,14 +65,21 @@ def successive_elimination(arm_means, num_arms, total_steps, delta,seed):
     while len(remaining_arms) > 1 and step < total_steps:
         for arm in remaining_arms:
             arm_pulls[arm] += 1
-            reward =  np.random.binomial(1, arm_means[arm])
+
+            if arm_distribution == 'effect_size':
+                reward =  np.random.normal(arm_means[arm],1)
+            else:
+                reward =  np.random.binomial(1, arm_means[arm])
             empirical_means[arm] = ((empirical_means[arm] * (arm_pulls[arm] - 1)) + reward) / arm_pulls[arm]
             step += 1
             if step >= total_steps:
                 break
         
         # Update confidence bounds
-        confidence_bound = compute_hoeffding_bound_one_way(arm_pulls[remaining_arms],delta)
+        if arm_distribution == 'effect_size':
+            confidence_bound = compute_subgaussian_bound_one_way(arm_pulls[remaining_arms],delta)
+        else:
+            confidence_bound = compute_hoeffding_bound_one_way(arm_pulls[remaining_arms],delta)
         
         # Calculate upper and lower bounds
         # Here we do need the 2/delta
