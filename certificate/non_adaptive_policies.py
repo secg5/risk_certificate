@@ -1,4 +1,4 @@
-from certificate.utils import compute_hoeffding_bound, sample_bernoulli
+from certificate.utils import compute_hoeffding_bound, compute_hoeffding_bound_one_way, sample_bernoulli
 import numpy as np
 
 def compute_top_k(first_stage, n, s_1, s_2, mu):
@@ -56,3 +56,104 @@ def fixed_k_policies(k, s_2, arm_means, selected_arms,delta,seed):
     lower_bound = compute_hoeffding_bound(s_2/k, delta)
     certificate = second_stage.mean(axis=1) - lower_bound
     return certificate, lower_bound
+
+def two_stage_thompson_sampling(first_stage,n,delta,s_1,T,mu,seed):
+    """Run a two-stage Thompson Sampling Method
+    Essentially, given a uniform prior, compute a posterior 
+    Then, using this posterior, compute the relative probability for 
+    each arm being the top, and sample proportional to this
+    
+    Arguments:
+        first_stage: 0-1 matrix of size n x s_{1}, with rewards for
+            arm x time stage
+        n: Integer, number of arms
+        delta: Float, confidence we're aiming for
+        s_1: Number of arms pulled in the first stage
+        T: total number of arms pulled
+        mu: True means 
+        seed: Integer, random seed"""
+
+    np.random.seed(seed)
+    new_alphas = []
+    new_betas = []
+
+    initial_alpha = initial_beta = 1
+
+    for i in range(len(first_stage)):
+        success = np.sum(first_stage[i])
+        total = len(first_stage[i])
+        new_alphas.append(initial_alpha+success)
+        new_betas.append(initial_beta-success+total)
+    
+    trials = 1000
+    max_arm_rates = np.array([0.0 for i in range(n)])
+
+    for _ in range(trials):
+        p_samples = [np.random.beta(new_alphas[j],new_betas[j]) for j in range(n)]
+        max_arm_rates[np.argmax(p_samples)] += 1
+    max_arm_rates /= trials 
+
+    rounded_arm_pulls = np.zeros(n)
+    s_2 = T-s_1
+    for i in range(s_2):
+        rounded_arm_pulls[np.random.choice(n,p=max_arm_rates)] += 1
+ 
+    empirical_means = np.zeros(n)
+    for i in range(n):
+        if rounded_arm_pulls[i] > 0:
+            empirical_means[i] = np.mean(sample_bernoulli(int(rounded_arm_pulls[i]), 1, np.array([mu[i]])))
+
+    widths = np.array([compute_hoeffding_bound(rounded_arm_pulls[i],delta) for i in range(n)])
+    certificates = empirical_means-widths
+    best_certificate = np.argmax(certificates)
+
+    return [certificates[best_certificate]], widths[best_certificate]
+    
+def two_stage_successive_elimination(first_stage,n,arm_means, s_1, T, delta,seed):
+    """Successive Elimination algorithm for best arm identification.
+        Do this in two-stages; first uniform
+        Compute Successive Elimination
+        Then do uniform again
+
+    Parameters:
+        first_stage: 0-1 matrix of size n x s_{1}, with rewards for
+            arm x time stage
+        n: Integer, number of arms 
+        arm_means (list or np.array): True means of the arms (for simulation).
+        s_1: Integer, total arm pulls in the first stage
+        T: Integer, total arm pulls
+        delta (float): Confidence parameter.
+        seed: Integer, random seed
+
+    Returns:
+        best_arm (int): The index of the identified best arm.
+        confidence_bound (list): Number of pulls for each arm.
+    """
+    np.random.seed(seed)
+    s_2 = T-s_1
+    arm_pulls = np.zeros(n)
+    empirical_means = np.zeros(n)
+    remaining_arms = list(range(n))
+
+    arm_pulls += s_1//n 
+    empirical_means = np.mean(first_stage,axis=1)
+    
+    confidence_bound = compute_hoeffding_bound_one_way(arm_pulls,delta)
+    
+    upper_bounds = empirical_means[remaining_arms] + confidence_bound
+    lower_bounds = empirical_means[remaining_arms] - confidence_bound
+    
+    best_arm_index = np.argmax(empirical_means[remaining_arms])
+    
+    remaining_arms = [
+        arm for i, arm in enumerate(remaining_arms)
+        if upper_bounds[i] >= lower_bounds[best_arm_index]
+    ]
+    k = len(remaining_arms)
+
+    second_stage = sample_bernoulli(s_2, k, arm_means, remaining_arms)
+    lower_bound = compute_hoeffding_bound(s_2//k, delta)
+    certificate = second_stage.mean(axis=1) - lower_bound
+    return certificate, lower_bound
+
+    

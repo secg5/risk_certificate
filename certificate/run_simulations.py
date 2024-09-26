@@ -2,7 +2,7 @@ import numpy as np
 from copy import deepcopy 
 from certificate.utils import compute_hoeffding_bound, sample_bernoulli
 from certificate.adaptive_policies import UCB, successive_elimination
-from certificate.non_adaptive_policies import compute_top_k, fixed_k_policies
+from certificate.non_adaptive_policies import compute_top_k, fixed_k_policies, two_stage_thompson_sampling, two_stage_successive_elimination
 from certificate.prior_policies import beta_prior_policy
 
 def generate_arm_means(arm_distribution,arm_parameters,n_arms):
@@ -76,6 +76,10 @@ def run_experiments(config):
     width_split_total = compute_hoeffding_bound(s_2/top_k_split + s_1/n, delta)
     certificate_split_total = certificate_split + width_split - width_split_total 
 
+    # Other Two Stage Algorithms
+    certificate_thompson, width_thompson = two_stage_thompson_sampling(first_stage,n,delta,s_1,T,mu,seed)
+    certificate_two_stage_se, width_two_stage_se = two_stage_successive_elimination(first_stage,n,mu, s_1, T, delta,seed)
+
     # Adaptive Algorithms
     certificate_ucb, width_ucb = UCB(mu, n, T, delta,seed)
     certificate_se, width_se = successive_elimination(mu, n, T, delta,seed)
@@ -90,6 +94,11 @@ def run_experiments(config):
                         "certificate_width": width_split}
     results["sample_split_total"] = {"certificate":certificate_split_total, 
                         "certificate_width": width_split_total}
+
+    results['two_stage_thompson'] = {"certificate": certificate_thompson, 
+                        "certificate_width": width_thompson}
+    results['two_stage_successive_elimination'] = {'certificate': certificate_two_stage_se, 
+                        "certificate_width": width_two_stage_se}
 
     results["ucb"] = {'certificate': certificate_ucb,
         'certificate_width': width_ucb}

@@ -136,7 +136,7 @@ def sample_bernoulli(N, K, mu, indices=None):
     Generate a sample of N from K different Bernoulli distributions with given probabilities.
     
     Arguments:
-        N (int): Number of samples to draw from each distribution.
+        N (int): Number of samples to draw total.
         K (int): Number of different Bernoulli distributions.
         p (list or np.array): Probabilities for each of the K distributions.
     
