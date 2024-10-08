@@ -3,6 +3,7 @@ import glob
 import json 
 import numpy as np
 import os
+import copy
 
 def get_results_matching_parameters(folder_name,result_name,parameters):
     """Get a list of dictionaries, with data, which match some set of parameters
@@ -40,16 +41,20 @@ def aggregate_data(results):
     
     Returns: Dictionary, with each key mapping to a 
         tuple with the mean and standard deviation"""
-
+    
     r = [] 
     for row in results:
         temp = {}
         for key in row:
             if key != 'parameters':
                 temp[key] = row[key]['certificate']
+        n_arms = len(row['parameters']['distribution'])
+        temp["median_effect"] = sorted(row['parameters']['distribution'])[n_arms//2]
+
+                # distribution
         r.append(temp)
     results = r
-    
+    # import pdb; pdb.set_trace()
     ret_dict = {}
     for l in results:
         for k in l:
@@ -72,8 +77,41 @@ def aggregate_data(results):
 
     for i in ret_dict:
         ret_dict[i] = (np.mean(ret_dict[i]),np.std(ret_dict[i]))
-    
+    # import pdb; pdb.set_trace()
     return ret_dict 
+
+def aggregate_normalize_data(results,baseline=None, normalized="max"):
+    """Get the average and standard deviation for each key across 
+        multiple trials; with each reward/etc. being averaged
+        
+    Arguments: 
+        results: List of dictionaries, one for each seed
+    
+    Returns: Dictionary, with each key mapping to a 
+        tuple with the mean and standard deviation"""
+    
+    results_copy = copy.deepcopy(results)
+
+    for data_point in results_copy:
+        
+        # if normalized == "max":
+        #     normalized_factor = max(data_point["parameters"]["distribution"])
+        # elif normalized == "median":
+        #     n_arms = len(data_point["parameters"]["distribution"])
+        #     normalized_factor = sorted(data_point["parameters"]["distribution"])[n_arms // 2]
+
+        if normalized == "max":
+            normalized_factor = max(data_point["parameters"]["distribution"])
+        elif normalized == "median":
+            normalized_factor = data_point["random"]["certificate"]
+                   
+        if baseline != None:
+            for key in data_point:
+                if key != "parameters":
+                    data_point[key]["certificate"] = [x/normalized_factor for i, x in enumerate(data_point[key]["certificate"])]
+                    # data_point[key]["certificate"] Do we need the certificate width?
+
+    return aggregate_data(results_copy)
 
 
 def delete_duplicate_results(folder_name,result_name,data):
