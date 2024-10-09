@@ -104,12 +104,9 @@ def aggregate_normalize_data(results,baseline=None, normalized="max"):
             normalized_factor = max(data_point["parameters"]["distribution"])
         elif normalized == "median":
             normalized_factor = data_point["random"]["certificate"]
-                   
-        if baseline != None:
-            for key in data_point:
-                if key != "parameters":
-                    data_point[key]["certificate"] = [x/normalized_factor for i, x in enumerate(data_point[key]["certificate"])]
-                    # data_point[key]["certificate"] Do we need the certificate width?
+        for key in data_point:
+            if key != "parameters":
+                data_point[key]["certificate"] = [x/normalized_factor for i, x in enumerate(data_point[key]["certificate"])]
 
     return aggregate_data(results_copy)
 
