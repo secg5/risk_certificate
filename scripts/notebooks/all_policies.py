@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.15.2
 #   kernelspec:
 #     display_name: risk_certificates
 #     language: python
@@ -138,4 +138,4 @@ save_path = "{}/{}.json".format(out_folder,save_name)
 
 delete_duplicate_results(out_folder,"",aggregate_results)
 
-json.dump(results,open('../../results/'+save_path,'w'))
+json.dump(aggregate_results,open('../../results/'+save_path,'w'))
