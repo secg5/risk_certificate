@@ -104,7 +104,8 @@ def successive_elimination(arm_means, num_arms, total_steps, delta,seed,arm_dist
             if upper_bounds[i] >= lower_bounds[best_arm_index]
         ]
 
-    return lower_bounds, confidence_bound```
+    return lower_bounds, confidence_bound
+```
 
 #### Results
 Our results are available in a zip file [here](https://cmu.box.com/s/9l8rk948qn00tf8zt9kgb0st9vuu024o). 
