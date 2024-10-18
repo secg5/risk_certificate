@@ -107,5 +107,5 @@ def successive_elimination(arm_means, num_arms, total_steps, delta,seed,arm_dist
     return lower_bounds, confidence_bound
 ```
 
-#### Results
+## Results
 Our results are available in a zip file [here](https://cmu.box.com/s/9l8rk948qn00tf8zt9kgb0st9vuu024o). 
