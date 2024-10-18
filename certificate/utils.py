@@ -54,7 +54,6 @@ def aggregate_data(results):
                 # distribution
         r.append(temp)
     results = r
-    # import pdb; pdb.set_trace()
     ret_dict = {}
     for l in results:
         for k in l:
@@ -77,12 +76,12 @@ def aggregate_data(results):
 
     for i in ret_dict:
         ret_dict[i] = (np.mean(ret_dict[i]),np.std(ret_dict[i]))
-    # import pdb; pdb.set_trace()
     return ret_dict 
 
-def aggregate_normalize_data(results,baseline=None, normalized="max"):
+def aggregate_normalize_data(results,normalized="max"):
     """Get the average and standard deviation for each key across 
-        multiple trials; with each reward/etc. being averaged
+        multiple trials; with each reward/etc. being normalized
+        by the maximum value of \mu
         
     Arguments: 
         results: List of dictionaries, one for each seed
@@ -93,17 +92,7 @@ def aggregate_normalize_data(results,baseline=None, normalized="max"):
     results_copy = copy.deepcopy(results)
 
     for data_point in results_copy:
-        
-        # if normalized == "max":
-        #     normalized_factor = max(data_point["parameters"]["distribution"])
-        # elif normalized == "median":
-        #     n_arms = len(data_point["parameters"]["distribution"])
-        #     normalized_factor = sorted(data_point["parameters"]["distribution"])[n_arms // 2]
-
-        if normalized == "max":
-            normalized_factor = max(data_point["parameters"]["distribution"])
-        elif normalized == "median":
-            normalized_factor = data_point["random"]["certificate"]
+        normalized_factor = max(data_point["parameters"]["distribution"])
         for key in data_point:
             if key != "parameters":
                 data_point[key]["certificate"] = [x/normalized_factor for i, x in enumerate(data_point[key]["certificate"])]
@@ -127,15 +116,18 @@ def delete_duplicate_results(folder_name,result_name,data):
 
     for file_name in all_results:
         try:
-            load_file = json.load(open(file_name,"r"))
-        except:
-            continue 
+            f = open(file_name)
+            first_few = f.read(2000)
+            first_few = "}".join(first_few.split("}")[:2])+"}}"
+            load_file = json.loads(first_few)['parameters']
 
-        if 'parameters' in load_file and load_file['parameters'] == data['parameters']:
-            try:
-                os.remove(file_name)
-            except OSError as e:
-                print(f"Error deleting {file_name}: {e}")
+            if load_file == data['parameters']:
+                try:
+                    os.remove(file_name)
+                except OSError as e:
+                    print(f"Error deleting {file_name}: {e}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 def compute_hoeffding_bound(n_data, delta):
     """Given n pulls of an arm, compute the lower bound
@@ -192,9 +184,7 @@ def compute_subgaussian_bound_one_way(n_data, delta):
     Returns: Float, lower bound (when subtracted from \mu)"""
 
     return np.sqrt((2/(n_data))*np.log(2/delta))
-
-
-
+    
 def sample_bernoulli(N, K, mu, indices=None):
     """
     Generate a sample of N from K different Bernoulli distributions with given probabilities.

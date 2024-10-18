@@ -2,5 +2,3 @@ certificate.egg-info
 __pycache__/
 results/
 *.zip
-data/
-

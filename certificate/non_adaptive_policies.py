@@ -2,7 +2,8 @@ from certificate.utils import compute_hoeffding_bound, compute_hoeffding_bound_o
 import numpy as np
 
 def compute_top_k(first_stage, n, s_1, s_2, mu):
-    """
+    """ Compute the top-k for various policies, including 
+    omniscient and sample splitting 
     Arguments:
         first_stage: Numpy matrix (n x s_{1}//n) of rewards for each
             arm for each timestep in the first stage
@@ -53,6 +54,18 @@ def compute_top_k(first_stage, n, s_1, s_2, mu):
 
 
 def fixed_k_policies(k, s_2, arm_means, selected_arms,delta,seed, arm_distribution):
+    """Run a two-stage policy which takes the top-k for a fixed k
+    
+    Arguments:
+        k: The value of k to use for the top-k
+        s_2: Budget for the second stage
+        arm_means: List of \mu for each arm
+        selected_arms: A list of arms, sorted by their first-stage means
+        delta: Float, confidence we're aiming for
+        seed: Integer, random seed
+        arm_distribution: String, what distribution we use for the likelihood
+            Either effect_size, beta, beta_misspecified, or uniform"""
+    
     np.random.seed(seed)
     B = selected_arms[:k]
 
@@ -79,11 +92,15 @@ def two_stage_thompson_sampling_bernoulli(first_stage,n,delta,s_1,T,mu,seed,arm_
         s_1: Number of arms pulled in the first stage
         T: total number of arms pulled
         mu: True means 
-        seed: Integer, random seed"""
+        seed: Integer, random seed
+    
+    Returns: The best certificate (as a list) and the corresponding confidence
+        width"""
 
     np.random.seed(seed)
     new_alphas = []
     new_betas = []
+    trials = 1000
 
     initial_alpha = initial_beta = 1
 
@@ -93,7 +110,6 @@ def two_stage_thompson_sampling_bernoulli(first_stage,n,delta,s_1,T,mu,seed,arm_
         new_alphas.append(initial_alpha+success)
         new_betas.append(initial_beta-success+total)
     
-    trials = 1000
     max_arm_rates = np.array([0.0 for i in range(n)])
 
     for _ in range(trials):
@@ -142,6 +158,7 @@ def two_stage_thompson_sampling_normal(first_stage,n,delta,s_1,T,mu,seed,arm_dis
     np.random.seed(seed)
     new_means = []
     new_stds = []
+    trials = 1000
 
     initial_mean = 0
     initial_std = 1
@@ -153,7 +170,6 @@ def two_stage_thompson_sampling_normal(first_stage,n,delta,s_1,T,mu,seed,arm_dis
         new_means.append((1/(1/initial_std**2)+total/(std**2))*(initial_mean/initial_std**2 + success/std**2))
         new_stds.append((1/(1/initial_std**2)+total/(std**2)))
     
-    trials = 1000
     max_arm_rates = np.array([0.0 for i in range(n)])
 
     for _ in range(trials):

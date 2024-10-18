@@ -25,13 +25,12 @@ from certificate.run_simulations import run_experiments, generate_arm_means
 from certificate.utils import delete_duplicate_results
 import json 
 import sys
-import os
 
 is_jupyter = 'ipykernel' in sys.modules
 
 # +
 if is_jupyter: 
-    seed        = 43
+    seed   = 43
     trials = 100
     n_arms = 10
     max_pulls_per_arm = 50
@@ -88,11 +87,11 @@ save_name = secrets.token_hex(4)
 random.seed(seed)
 np.random.seed(seed)
 
+# ## Run Policies
+
 if arm_distribution == 'effect_size':
     a = list(csv.DictReader(open('../../data/meta_analyses.csv')))
     arm_parameters['all_effect_sizes'] = [float(i['effect']) for i in a if i['ma.doi'] == '10.1093/gerona/glp082']
-
-# ## Run Policies
 
 arm_means = generate_arm_means(arm_distribution,arm_parameters,n_arms)
 
@@ -139,10 +138,4 @@ save_path = "{}/{}.json".format(out_folder,save_name)
 
 delete_duplicate_results(out_folder,"",aggregate_results)
 
-if is_jupyter:
-    dirname = os.path.abspath('')
-    filename = os.path.join(dirname, '../../results/'+save_path)
-else:
-    dirname = os.path.dirname(os.path.abspath(__file__))
-    filename = os.path.join(dirname, '../../results/'+save_path)
-json.dump(aggregate_results,open(filename,'w'))
+json.dump(results,open('../../results/'+save_path,'w'))

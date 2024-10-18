@@ -88,7 +88,6 @@ def successive_elimination(arm_means, num_arms, total_steps, delta,seed,arm_dist
         
         # Find the best arm based on current estimates
         best_arm_index = np.argmax(empirical_means[remaining_arms])
-        best_arm = remaining_arms[best_arm_index]
         
         # Eliminate arms whose upper bound is worse than the best arm's lower bound
         remaining_arms = [

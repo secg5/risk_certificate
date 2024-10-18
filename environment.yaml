@@ -1,0 +1,11 @@
+name: certificate
+channels:
+  - https://conda.anaconda.org/gurobi
+  - defaults
+dependencies:
+  - python=3.8
+  - matplotlib
+  - scipy
+  - jupytext
+  - jupyter
+prefix: /usr0/home/naveenr/miniconda3/envs/certificate
