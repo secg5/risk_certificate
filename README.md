@@ -46,7 +46,7 @@ This notebook evaluates all policies based on a set of parameters, and writes re
 
 #### Re-Running Experiments
 All bash scripts for experiments can be found in the `scripts/bash_scripts` folder. 
-To run all the experiments, run `bash scripts/bash_scripts/main_scripts/run_all_experiments.sh`
+To run all the experiments, run `bash scripts/bash_scripts/run_all.sh`
 
 #### Running custom policies
 To run custom policies, define a function that takes in the arm means, number of arms, total budget (T), delta, seed, and the distribution of arms. 
